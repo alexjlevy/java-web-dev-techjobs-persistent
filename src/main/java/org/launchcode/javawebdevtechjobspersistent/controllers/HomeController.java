@@ -2,8 +2,10 @@ package org.launchcode.javawebdevtechjobspersistent.controllers;
 
 import org.launchcode.javawebdevtechjobspersistent.models.Employer;
 import org.launchcode.javawebdevtechjobspersistent.models.Job;
+import org.launchcode.javawebdevtechjobspersistent.models.Skill;
 import org.launchcode.javawebdevtechjobspersistent.models.data.EmployerRepository;
 import org.launchcode.javawebdevtechjobspersistent.models.data.JobRepository;
+import org.launchcode.javawebdevtechjobspersistent.models.data.SkillRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,6 +28,9 @@ public class HomeController {
     @Autowired
     private JobRepository jobRepository;
 
+    @Autowired
+    private SkillRepository skillRepository;
+
     @RequestMapping("")
     public String index(Model model) {
 
@@ -39,22 +44,26 @@ public class HomeController {
         model.addAttribute("title", "Add Job");
         model.addAttribute(new Job());
         model.addAttribute("employers", employerRepository.findAll());
+        model.addAttribute("skills", skillRepository.findAll());
         return "add";
     }
 
     @PostMapping("add")
     public String processAddJobForm(@ModelAttribute @Valid Job newJob,
-                                       Errors errors, Model model, @RequestParam int employerId) {
+                                       Errors errors, Model model, @RequestParam int employerId, @RequestParam List<Integer> skills) {
 
         if (errors.hasErrors()) {
             model.addAttribute("title", "Add Job");
             return "add";
         }
-        Optional<Employer> result = employerRepository.findById(employerId);
-        if (result.isEmpty()) {
+        Optional<Employer> optionalEmployer = employerRepository.findById(employerId);
+        if (optionalEmployer.isEmpty()) {
             model.addAttribute("title", "Invalid Employer ID: " +employerId);
         } else {
-            Employer employer = result.get();
+            Employer employer = optionalEmployer.get();
+            newJob.setEmployer(employer);
+            List<Skill> skillObjs = (List<Skill>) skillRepository.findAllById(skills);
+            newJob.setSkills(skillObjs);
             jobRepository.save(newJob);
             model.addAttribute("employers", employer);
         }
@@ -69,9 +78,13 @@ public class HomeController {
     }
     @GetMapping("view/{jobId}")
     public String displayViewJob(Model model, @PathVariable int jobId) {
-
+        Optional optionalJob = jobRepository.findById(jobId);
+        if (optionalJob.isEmpty()){
+            return "redirect:";
+        } else {
+            Job job = (Job) optionalJob.get();
+            model.addAttribute("job", job);
+        }
         return "view";
     }
-
-
 }
